@@ -1,5 +1,10 @@
 
-let Joi = require('joi')
+
+var myappDebug = require('debug')('x')
+// var dbDebug = require('debug')('app:db')
+
+let mongoose = require('mongoose')
+
 
 // var http = require('http')
 
@@ -19,16 +24,18 @@ let Joi = require('joi')
 // })
 
 // server.listen(5000, () => {
-//   console.log('server stated in port 5000')
+//   expressdebug('server stated in port 5000')
 // })
 
 
 let cors = require('cors')
 
-let auth = require('./auth')
-let logging = require('./logging')
+let auth = require('./middlewares/auth')
+let logging = require('./middlewares/logging')
 var dotenv = require('dotenv').config()
 const express = require('express')
+let productsRouter = require('./routes/products')
+let homeRouter = require('./routes/home')
 
 
 
@@ -41,102 +48,11 @@ app.use(express.urlencoded({
 
 app.use(cors())
 
-
-
 app.use(logging)
 app.use(auth)
 
-var products = [{id: 1, pname: 'apple'}, {id: 2, pname: 'banana'}, {id: 3, pname: 'grape'}]
-
-app.get('/', (req, res) => {
-  res.send('hello express')
-})
-
-//get all product
-
-app.get('/api/products', (req, res) => {
-  var query = req.query
-  console.log(query)
-  res.send(products)
-})
-
-// get single product
-
-app.get('/api/products/:id', (req, res) => {
-  let product = products.find((prod) => {
-    return prod.id === parseInt(req.params.id)
-  })
-  // console.log(product)
-  if (!product) {
-    return res.status(404).send('product with given id not found')
-  }
-  return res.send(product)
-})
-
-
-// post data
-
-app.post('/api/products', (req, res) => {
-
-  var { error } =  validateProductname(req.body)
-
-  if (error) {
-    res.status(400).send(error.details[0].message)
-  }
-  
-  // console.log(req)
-  let product = {
-    id: products.length+1,
-    pname:  req.body.pname
-  }
-  products.push(product)
-  res.status(201).send(products)
-  
-})
-
-//delete product
-
-app.delete('/api/products/:id', (req, res) => {
-
-   let product = products.find((prod) => {
-    return prod.id === parseInt(req.params.id)
- })
-  console.log(product)
-  if (!product) {
-   return res.status(404).send('product with given id not found')
-  }
-  var index = products.indexOf(product)
-  // console.log(index)
-  
-  products.splice(index, 1)
-  res.send(products)
-  
-})
-
-//update product
-
-app.put('/api/products/:id', (req, res) => {
-
- var {error} = validateProductname(req.body)
-
-  if (error) {
-    res.status(400).send(error.details[0].message)
-  }
-
-    let product = products.find((prod) => {
-    return prod.id === parseInt(req.params.id)
- })
-  // console.log(product)
-  if (!product) {
-   return res.status(404).send('product with given id not found')
-  }
-
-  product.pname = req.body.pname
-
-  return res.send(products)
-
-  
-})
+app.use('/api/products', productsRouter)
+app.use('/', homeRouter)
 
 
 var PORT = process.env.PORT || 3000
@@ -144,14 +60,17 @@ var PORT = process.env.PORT || 3000
 // console.log(PORT)
 
 app.listen(PORT, () => {
-  console.log(`server stated in port${PORT}`)
+  // console.log(`server stated in port${PORT}`)
+  console.log(`server stated in port ${PORT}`)
 })
 
-
-function validateProductname(product) {
-    let schema = Joi.object({
-    pname: Joi.string().min(3).required(),
+var dbCon = process.env.mongodb_url
+mongoose.connect(dbCon)
+  .then(() => {
+   console.log('Db connected successfully')
   })
-  
-  return schema.validate(product)
-}
+  .catch(() => {
+    console.log('Error while connecting with db')
+  })
+
+
